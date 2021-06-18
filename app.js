@@ -25,7 +25,6 @@
 
 
 
-
 const inputNumber = document.getElementById('input-number')
 const submitBtn = document.getElementById('submit-btn')
 const imageDetails = document.getElementById('image-details')
@@ -47,59 +46,52 @@ submitBtn.addEventListener('click', function (event) {
   let inputValue = inputNumber.value
 
   imageDetails.innerHTML = "";
+  gallery.innerHTML = `<img src="./spinner.gif">`
 
   fetch(
-    `https://api.nasa.gov/planetary/apod?api_key=8PrMHpPeTU4lrZx2fqyzPtV086hewfctfuTEIEDu&count=${inputValue}`
+    `https://api.nasa.gov/planetary/apod?api_key=8PrMHpPeTU4lrZx2fqyzPtV086hewfctfuTEIEDu&count=${inputValue}&thumbs=true`
   )
     .then((res) => res.json())
     .then((data) => {
-      information = generateIndex(data)
+      information = data
       render(information)
     })
 })
 
 gallery.addEventListener('click', function (event) {
-  if (event.target.classList.value === "overlay" || event.target.parentElement.classList.value === "overlay") {
-    let itemIndex = event.target.parentElement.getAttribute("data-index");
+  let itemIndex = "";
 
-    let item = information.filter(object => {
-      if (Number(itemIndex) === object.index) {
-        return object;
-      }
-    })
-
-    imageDetails.innerHTML = renderItemDetails(item[0]);
+  if (event.target.classList.value === "overlay") {
+    itemIndex = event.target.parentElement.getAttribute("data-index");
+  } else if (event.target.parentElement.classList.value === "overlay") {
+    itemIndex = event.target.parentElement.parentElement.getAttribute("data-index");
   }
+
+  let item = information[itemIndex];
+  imageDetails.innerHTML = renderItemDetails(item);
 })
 
 imageDetails.addEventListener("click", function (event) {
   if (event.target.tagName === "BUTTON") {
     imageDetails.innerHTML = "";
   }
-
-  imageDetails.setAttribute("data-media", item[0].media_type);
-  if (imageDetails.getAttribute("data-media") === "video") {
-    const embed = imageDetails.getElementsByTagName("embed")[0];
-
-    event.target.setAttribute("target", "_blank");
-  }
-
 })
 
 // functions
 function render(data) {
-  gallery.innerHTML = data.reduce((result, media) => {
-    const { index, date, media_type, title, url } = media
+  let index = 0;
 
+  gallery.innerHTML = data.reduce((result, media) => {
+    const { date, media_type, title, url, thumbnail_url } = media
     if (media_type !== 'other') {
       result += `
-      <div class="gallery-item" data-index=${index}>
+      <div class="gallery-item" data-index=${index++}>
         <h4>${media_type}</h4>
         <div class="overlay">
           <h3>${title}</h3>
           <p>${date}</p>
         </div>
-        <embed src="${url}">
+        <embed src="${media_type === "video" ? thumbnail_url : url}" id="embed">
       </div>
     `
     }
@@ -109,25 +101,18 @@ function render(data) {
 }
 
 function renderItemDetails(item) {
-  const { title, explanation, url, copyright } = item;
-  let result = `
+  const { title, explanation, url, media_type, copyright, thumbnail_url } = item;
+  let result = "";
+
+  result += `
     <h2>${title}</h2>
     <p>${explanation}</p>
+    ${media_type === "video" ? `<a href="${url}" target="_blank">see video</a>` : ""}
     <embed
-      src="${url}">
+      src="${media_type === "video" ? thumbnail_url : url}">
+    ${copyright ? `<p class="copyright">©copyright ${copyright}</p>` : ""}
     <button>X</button>
   `
 
-  if (copyright) {
-    result += `<p class="copyright">©copyright ${copyright}</p>`;
-  }
-
   return result;
-}
-
-function generateIndex(data) {
-  return data.map((obj, index) => {
-    obj.index = index
-    return obj
-  })
 }
